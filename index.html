@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>동탄 날씨</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f0f4f8;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .weather-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 10px auto;
+      width: 300px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .weather-img {
+      width: 100px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="page-title">동탄 날씨</h1>
+  <div id="weather-container"></div>
+
+  <script>
+    const serviceKey = "UX0oUh7ZWRuQW2qnng2rzw8U14zs2TmY9DYi8Eqs0SDQpo1wMe0l/BtVqaYcl7LYEJP0wysrk3xmQFgeE5iTJQ=="; // 본인의 인증키 입력
+
+    function formatDate(date) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      return `${yyyy}${mm}${dd}`;
+    }
+
+    function getBaseTime() {
+      const now = new Date();
+      const hour = now.getHours();
+      if (hour < 2) return "2300";
+      if (hour < 5) return "0200";
+      if (hour < 8) return "0500";
+      if (hour < 11) return "0800";
+      if (hour < 14) return "1100";
+      if (hour < 17) return "1400";
+      if (hour < 20) return "1700";
+      if (hour < 23) return "2000";
+      return "2300";
+    }
+
+    function skyText(sky, pty) {
+      if (pty === "1") return "비";
+      if (pty === "2") return "비/눈";
+      if (pty === "3") return "눈";
+      if (pty === "4") return "소나기";
+      if (sky === "1") return "맑음";
+      if (sky === "3" || sky === "4") return "흐림";
+      return "알 수 없음";
+    }
+
+    function getWeatherImage(sky, pty) {
+      if (pty === "1" || pty === "2" || pty === "4") return "rain.png";
+      if (pty === "3") return "snow.png";
+      if (sky === "1") return "sunny.png";
+      if (sky === "3" || sky === "4") return "cloudy.png";
+      return "unknown.png";
+    }
+
+    async function fetchWeather() {
+      const now = new Date();
+      const todayStr = formatDate(now);
+      const baseTime = getBaseTime();
+      const nx = 60, ny = 120; // 동탄 위치
+
+      const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${serviceKey}&pageNo=1&numOfRows=1000&dataType=JSON&base_date=${todayStr}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const items = json.response.body.items.item;
+
+      const fcstItems = items.filter(i => i.fcstDate === todayStr && i.fcstTime === "1500");
+
+      const tmp = fcstItems.find(i => i.category === "TMP");
+      const sky = fcstItems.find(i => i.category === "SKY");
+      const pty = fcstItems.find(i => i.category === "PTY");
+      const reh = fcstItems.find(i => i.category === "REH");
+      const wsd = fcstItems.find(i => i.category === "WSD");
+
+      const weatherImg = getWeatherImage(sky?.fcstValue, pty?.fcstValue);
+      const weatherText = skyText(sky?.fcstValue, pty?.fcstValue);
+
+      const container = document.getElementById("weather-container");
+      container.innerHTML = `
+        <div class="weather-box">
+          <h2>${todayStr} (${["일","월","화","수","목","금","토"][now.getDay()]})</h2>
+          <img src="images/${weatherImg}" alt="날씨 이미지" class="weather-img">
+          <p>기온: ${tmp?.fcstValue ?? "정보 없음"}℃</p>
+          <p>날씨: ${weatherText}</p>
+          <p>습도: ${reh?.fcstValue ?? "정보 없음"}%</p>
+          <p>풍속: ${wsd?.fcstValue ?? "정보 없음"} m/s</p>
+        </div>
+      `;
+    }
+
+    function setTitleWithDate() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
+      document.getElementById("page-title").textContent = `${formattedDate}의 동탄 날씨`;
+    }
+
+    setTitleWithDate();
+    fetchWeather();
+  </script>
+</body>
+</html>
