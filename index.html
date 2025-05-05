@@ -27,14 +27,20 @@
       width: 100px;
       height: auto;
     }
+    #loading {
+      font-size: 18px;
+      color: #888;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <h1 id="page-title">동탄 날씨</h1>
+  <div id="loading">🌤️ 날씨 정보를 불러오는 중... (최대 3~4분 소요될 수 있습니다)</div>
   <div id="weather-container"></div>
 
   <script>
-    const serviceKey = "UX0oUh7ZWRuQW2qnng2rzw8U14zs2TmY9DYi8Eqs0SDQpo1wMe0l/BtVqaYcl7LYEJP0wysrk3xmQFgeE5iTJQ=="; // 본인의 인증키 입력
+    const serviceKey = "UX0oUh7ZWRuQW2qnng2rzw8U14zs2TmY9DYi8Eqs0SDQpo1wMe0l/BtVqaYcl7LYEJP0wysrk3xmQFgeE5iTJQ=="; // 인증키 입력
 
     function formatDate(date) {
       const yyyy = date.getFullYear();
@@ -75,39 +81,62 @@
       return "unknown.png";
     }
 
-    async function fetchWeather() {
-      const now = new Date();
-      const todayStr = formatDate(now);
-      const baseTime = getBaseTime();
-      const nx = 60, ny = 120; // 동탄 위치
+    function getDatesToFetch() {
+      const base = new Date();
+      const result = [];
+      for (let i = 0; i < 3; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        result.push(d);
+      }
+      return result;
+    }
 
-      const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${serviceKey}&pageNo=1&numOfRows=1000&dataType=JSON&base_date=${todayStr}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+    async function fetchWeather() {
+      const baseDate = formatDate(new Date());
+      const baseTime = getBaseTime();
+      const nx = 60, ny = 120; // 동탄 좌표
+
+      const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${serviceKey}&pageNo=1&numOfRows=1000&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
       const res = await fetch(url);
       const json = await res.json();
       const items = json.response.body.items.item;
 
-      const fcstItems = items.filter(i => i.fcstDate === todayStr && i.fcstTime === "1500");
-
-      const tmp = fcstItems.find(i => i.category === "TMP");
-      const sky = fcstItems.find(i => i.category === "SKY");
-      const pty = fcstItems.find(i => i.category === "PTY");
-      const reh = fcstItems.find(i => i.category === "REH");
-      const wsd = fcstItems.find(i => i.category === "WSD");
-
-      const weatherImg = getWeatherImage(sky?.fcstValue, pty?.fcstValue);
-      const weatherText = skyText(sky?.fcstValue, pty?.fcstValue);
-
       const container = document.getElementById("weather-container");
-      container.innerHTML = `
-        <div class="weather-box">
-          <h2>${todayStr} (${["일","월","화","수","목","금","토"][now.getDay()]})</h2>
+      const loading = document.getElementById("loading");
+      loading.style.display = "none";
+
+      const dates = getDatesToFetch();
+
+      for (let i = 0; i < dates.length; i++) {
+        const label = ["오늘", "내일", "모레"][i];
+        const dateStr = formatDate(dates[i]);
+
+        const fcstItems = items.filter(i => i.fcstDate === dateStr && i.fcstTime === "1500");
+
+        const tmp = fcstItems.find(i => i.category === "TMP");
+        const sky = fcstItems.find(i => i.category === "SKY");
+        const pty = fcstItems.find(i => i.category === "PTY");
+        const reh = fcstItems.find(i => i.category === "REH");
+        const wsd = fcstItems.find(i => i.category === "WSD");
+
+        const weatherImg = getWeatherImage(sky?.fcstValue, pty?.fcstValue);
+        const weatherText = skyText(sky?.fcstValue, pty?.fcstValue);
+
+        const box = document.createElement("div");
+        box.className = "weather-box";
+
+        box.innerHTML = `
+          <h2>[${label} 날씨] (${dateStr})</h2>
           <img src="images/${weatherImg}" alt="날씨 이미지" class="weather-img">
           <p>기온: ${tmp?.fcstValue ?? "정보 없음"}℃</p>
           <p>날씨: ${weatherText}</p>
           <p>습도: ${reh?.fcstValue ?? "정보 없음"}%</p>
           <p>풍속: ${wsd?.fcstValue ?? "정보 없음"} m/s</p>
-        </div>
-      `;
+        `;
+
+        container.appendChild(box);
+      }
     }
 
     function setTitleWithDate() {
