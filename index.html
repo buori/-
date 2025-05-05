@@ -40,7 +40,7 @@
   <div id="weather-container"></div>
 
   <script>
-    const serviceKey = "UX0oUh7ZWRuQW2qnng2rzw8U14zs2TmY9DYi8Eqs0SDQpo1wMe0l/BtVqaYcl7LYEJP0wysrk3xmQFgeE5iTJQ=="; // 인증키 입력
+    const serviceKey = "당신의_기상청_API_서비스키"; // 인증키 입력
 
     function formatDate(date) {
       const yyyy = date.getFullYear();
@@ -84,7 +84,7 @@
     function getDatesToFetch() {
       const base = new Date();
       const result = [];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         const d = new Date(base);
         d.setDate(base.getDate() + i);
         result.push(d);
@@ -109,7 +109,7 @@
       const dates = getDatesToFetch();
 
       for (let i = 0; i < dates.length; i++) {
-        const label = ["오늘", "내일", "모레"][i];
+        const label = ["오늘", "내일"][i];
         const dateStr = formatDate(dates[i]);
 
         const fcstItems = items.filter(i => i.fcstDate === dateStr && i.fcstTime === "1500");
